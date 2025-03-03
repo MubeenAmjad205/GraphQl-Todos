@@ -1,4 +1,3 @@
-// src/providers/ReactQueryProvider.tsx
 'use client';
 
 import React from 'react';

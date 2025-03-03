@@ -1,19 +1,20 @@
-// src/components/TodoForm.tsx
 'use client';
 
-import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGraphQL } from '@/lib/api';
+import { useForm } from 'react-hook-form';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ADD_TODO_MUTATION = `
   mutation AddTodo(
     $task: String!, 
-    $priority: Int, 
-    $description: String, 
-    $dueDate: String, 
-    $tags: [String!], 
-    $assignedTo: String, 
-    $category: String
+    $priority: Int!, 
+    $description: String!, 
+    $dueDate: String!, 
+    $tags: [String!]!, 
+    $assignedTo: String!, 
+    $category: String!
   ) {
     addTodo(
       task: $task, 
@@ -31,113 +32,139 @@ const ADD_TODO_MUTATION = `
   }
 `;
 
+interface FormValues {
+  task: string;
+  priority: number;
+  description: string;
+  dueDate: string;
+  tags: string;
+  assignedTo: string;
+  category: string;
+}
+
 export default function TodoForm() {
   const queryClient = useQueryClient();
-  const [task, setTask] = useState('');
-  const [priority, setPriority] = useState(1);
-  const [description, setDescription] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [tags, setTags] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
-  const [category, setCategory] = useState('');
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<FormValues>({
+    defaultValues: {
+      task: '',
+      priority: 1,
+      description: '',
+      dueDate: '',
+      tags: '',
+      assignedTo: '',
+      category: '',
+    },
+  });
 
   const mutation = useMutation({
-    mutationFn: async (newTodo: any) => {
-      const variables = { ...newTodo };
+    mutationFn: async (newTodo: FormValues) => {
+      const variables = {
+        ...newTodo,
+        tags: newTodo.tags.split(',').map((t) => t.trim()),
+      };
       const result = await fetchGraphQL(ADD_TODO_MUTATION, variables);
-      if(result.errors) throw new Error(result.errors[0].message);
+      if (result.errors) throw new Error(result.errors[0].message);
       return result.data.addTodo;
     },
     onSuccess: () => {
       queryClient.invalidateQueries<any>(['todos']);
-      // Reset form fields
-      setTask('');
-      setPriority(1);
-      setDescription('');
-      setDueDate('');
-      setTags('');
-      setAssignedTo('');
-      setCategory('');
+      toast.success('Todo added successfully!');
+      reset(); 
+    },
+    onError: (error: any) => {
+      toast.error(`Error: ${error.message}`);
     }
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newTodo = {
-      task,
-      priority,
-      description,
-      dueDate: dueDate || null,
-      tags: tags ? tags.split(',').map((t) => t.trim()) : [],
-      assignedTo,
-      category,
-    };
-    mutation.mutate(newTodo);
+  const onSubmit = (data: FormValues) => {
+    mutation.mutate(data);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mb-4 p-4 border rounded shadow">
-      <div className="mb-2">
-        <input
-          type="text"
-          placeholder="Task"
-          value={task}
-          onChange={(e) => setTask(e.target.value)}
-          className="border p-2 w-full"
-          required
-        />
-      </div>
-      <div className="mb-2 flex space-x-2">
-        <input
-          type="number"
-          placeholder="Priority"
-          value={priority}
-          onChange={(e) => setPriority(Number(e.target.value))}
-          className="border p-2 w-1/3"
-        />
-        <input
-          type="text"
-          placeholder="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="border p-2 w-2/3"
-        />
-      </div>
-      <div className="mb-2 flex space-x-2">
-        <input
-          type="date"
-          placeholder="Due Date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="border p-2 w-1/2"
-        />
-        <input
-          type="text"
-          placeholder="Tags (comma separated)"
-          value={tags}
-          onChange={(e) => setTags(e.target.value)}
-          className="border p-2 w-1/2"
-        />
-      </div>
-      <div className="mb-2 flex space-x-2">
-        <input
-          type="text"
-          placeholder="Assigned To"
-          value={assignedTo}
-          onChange={(e) => setAssignedTo(e.target.value)}
-          className="border p-2 w-1/2"
-        />
-        <input
-          type="text"
-          placeholder="Category"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="border p-2 w-1/2"
-        />
-      </div>
-      <button type="submit" className="bg-green-500 text-white p-2 rounded">
-        Add Todo
-      </button>
-    </form>
+    <>
+      <form onSubmit={handleSubmit(onSubmit)} className="mb-4 p-4 border rounded shadow">
+        <div className="mb-2">
+          <input
+            type="text"
+            placeholder="Task"
+            {...register('task', { required: 'Task is required' })}
+            className="border p-2 w-full"
+          />
+          {errors.task && <p className="text-red-500 text-sm">{errors.task.message}</p>}
+        </div>
+        <div className="mb-2 flex space-x-2">
+          <div className="w-1/3">
+            <input
+              type="number"
+              placeholder="Priority"
+              {...register('priority', { 
+                required: 'Priority is required', 
+                valueAsNumber: true 
+              })}
+              className="border p-2 w-full"
+            />
+            {errors.priority && <p className="text-red-500 text-sm">{errors.priority.message}</p>}
+          </div>
+          <div className="w-2/3">
+            <input
+              type="text"
+              placeholder="Description"
+              {...register('description', { required: 'Description is required' })}
+              className="border p-2 w-full"
+            />
+            {errors.description && <p className="text-red-500 text-sm">{errors.description.message}</p>}
+          </div>
+        </div>
+        <div className="mb-2 flex space-x-2">
+          <div className="w-1/2">
+            <input
+              type="date"
+              placeholder="Due Date"
+              {...register('dueDate', { required: 'Due Date is required' })}
+              className="border p-2 w-full"
+            />
+            {errors.dueDate && <p className="text-red-500 text-sm">{errors.dueDate.message}</p>}
+          </div>
+          <div className="w-1/2">
+            <input
+              type="text"
+              placeholder="Tags (comma separated)"
+              {...register('tags', { required: 'Tags are required' })}
+              className="border p-2 w-full"
+            />
+            {errors.tags && <p className="text-red-500 text-sm">{errors.tags.message}</p>}
+          </div>
+        </div>
+        <div className="mb-2 flex space-x-2">
+          <div className="w-1/2">
+            <input
+              type="text"
+              placeholder="Assigned To"
+              {...register('assignedTo', { required: 'Assigned To is required' })}
+              className="border p-2 w-full"
+            />
+            {errors.assignedTo && <p className="text-red-500 text-sm">{errors.assignedTo.message}</p>}
+          </div>
+          <div className="w-1/2">
+            <input
+              type="text"
+              placeholder="Category"
+              {...register('category', { required: 'Category is required' })}
+              className="border p-2 w-full"
+            />
+            {errors.category && <p className="text-red-500 text-sm">{errors.category.message}</p>}
+          </div>
+        </div>
+        <button type="submit" className="bg-green-500 text-white p-2 rounded">
+          Add Todo
+        </button>
+      </form>
+      <ToastContainer />
+    </>
   );
 }
