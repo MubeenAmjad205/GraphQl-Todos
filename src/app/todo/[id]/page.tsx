@@ -1,4 +1,3 @@
-// app/todo/[id]/TodoDetailClient.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -6,6 +5,8 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchGraphQL } from '@/lib/api';
 import { FiArrowLeft, FiEdit, FiSave, FiX } from 'react-icons/fi';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const TODO_QUERY = `
   query Todo($id: ID!) {
@@ -66,23 +67,19 @@ export default function TodoDetailClient({ params }: { params: any }) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  // Log the id to ensure it's available
   useEffect(() => {  
     const getId = async () => {  
-        try {
-            
-          const resolvedParams = await params; // Resolve the params promise    7
-          // If the resolvedParams are not an object or doesn't contain an id key, throw an error  8
-          if (!resolvedParams || typeof resolvedParams!== 'object' ||!resolvedParams.id) {
-            throw new Error('Invalid or missing id parameter');
-          } 
-          let id:any = resolvedParams.id
-          setId(id); // Set the ID once resolved  
-        } catch (error) {
-          console.error("Error resolving params:", error);
-        }
-      }; 
-
+      try {
+        const resolvedParams = await params;
+        if (!resolvedParams || typeof resolvedParams !== 'object' || !resolvedParams.id) {
+          throw new Error('Invalid or missing id parameter');
+        } 
+        setId(resolvedParams.id); 
+      } catch (error) {
+        console.error("Error resolving params:", error);
+        toast.error("Error resolving route parameters.");
+      }
+    }; 
     getId();  
   }, [params]); 
 
@@ -97,7 +94,7 @@ export default function TodoDetailClient({ params }: { params: any }) {
       }
       return result.data.todo;
     },
-    enabled: !!id, // only run if id is available
+    enabled: !!id,
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -111,7 +108,6 @@ export default function TodoDetailClient({ params }: { params: any }) {
     category: ''
   });
 
-  // Initialize form state only once when data loads and not editing
   useEffect(() => {
     if (!isEditing && data && formState.task === '') {
       setFormState({
@@ -134,7 +130,11 @@ export default function TodoDetailClient({ params }: { params: any }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries<any>(['todo', id]);
+      toast.success('Todo updated successfully!');
       setIsEditing(false);
+    },
+    onError: (err: any) => {
+      toast.error(`Error updating todo: ${err.message}`);
     }
   });
 
@@ -144,6 +144,18 @@ export default function TodoDetailClient({ params }: { params: any }) {
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (
+      !formState.task ||
+      !formState.priority ||
+      !formState.description ||
+      !formState.dueDate ||
+      !formState.tags ||
+      !formState.assignedTo ||
+      !formState.category
+    ) {
+      toast.error('Please fill in all required fields.');
+      return;
+    }
     const updatedData = {
       id,
       task: formState.task,
@@ -188,6 +200,7 @@ export default function TodoDetailClient({ params }: { params: any }) {
                 value={formState.priority}
                 onChange={handleChange}
                 className="border p-2 w-full"
+                required
               />
             </div>
             <div className="w-2/3">
@@ -198,6 +211,7 @@ export default function TodoDetailClient({ params }: { params: any }) {
                 value={formState.description}
                 onChange={handleChange}
                 className="border p-2 w-full"
+                required
               />
             </div>
           </div>
@@ -210,6 +224,7 @@ export default function TodoDetailClient({ params }: { params: any }) {
                 value={formState.dueDate}
                 onChange={handleChange}
                 className="border p-2 w-full"
+                required
               />
             </div>
             <div className="w-1/2">
@@ -221,6 +236,7 @@ export default function TodoDetailClient({ params }: { params: any }) {
                 onChange={handleChange}
                 placeholder="Comma separated"
                 className="border p-2 w-full"
+                required
               />
             </div>
           </div>
@@ -233,6 +249,7 @@ export default function TodoDetailClient({ params }: { params: any }) {
                 value={formState.assignedTo}
                 onChange={handleChange}
                 className="border p-2 w-full"
+                required
               />
             </div>
             <div className="w-1/2">
@@ -243,6 +260,7 @@ export default function TodoDetailClient({ params }: { params: any }) {
                 value={formState.category}
                 onChange={handleChange}
                 className="border p-2 w-full"
+                required
               />
             </div>
           </div>
@@ -281,6 +299,7 @@ export default function TodoDetailClient({ params }: { params: any }) {
           </div>
         </>
       )}
+      <ToastContainer />
     </div>
   );
 }

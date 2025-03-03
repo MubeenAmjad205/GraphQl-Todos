@@ -44,7 +44,6 @@ export const resolvers = {
       assignedTo?: string;
       category?: string;
     }) => {
-      // Build update data dynamically based on provided fields
       const data: any = {};
       if (args.task !== undefined) data.task = args.task;
       if (args.priority !== undefined) data.priority = args.priority;

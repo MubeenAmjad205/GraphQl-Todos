@@ -1,5 +1,4 @@
 'use client';
-// app/page.tsx
 import TodoList from '@/components/TodoList';
 
 export default function HomePage() {
