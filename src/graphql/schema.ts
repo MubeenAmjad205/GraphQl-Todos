@@ -17,11 +17,23 @@ export const typeDefs = gql`
 
   type Query {
     todos: [Todo!]!
+    todo(id: ID!): Todo!
   }
+
 
   type Mutation {
     addTodo(
       task: String!
+      priority: Int
+      description: String
+      dueDate: String
+      tags: [String!]
+      assignedTo: String
+      category: String
+    ): Todo!
+    updateTodo(
+      id: ID!
+      task: String
       priority: Int
       description: String
       dueDate: String
